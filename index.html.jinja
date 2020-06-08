@@ -1,0 +1,83 @@
+{% set global = namespace(nColumns = 4) %}
+
+{% macro insert_image(url, path, width) %}
+  <div class="image">
+    <a href="{{ url }}"><img class="img-responsive" src="{{ url }}" alt="{{ path }}" width="{{ width }}" /></a>
+  </div>
+{% endmacro %}
+
+{% macro insert_video(video, width) %}
+  <div class="video embed-responsive embed-responsive-16by9">
+    <iframe class="embed-responsive-item" width="{{ width }}" height="{{ width / (1920.0/1080.0) }}" src="{{ video }}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  </div>
+{% endmacro %}
+
+{% macro insert_element(file) %}
+  {% set sm_col_width = ((12 / global.nColumns)|string).rstrip('.0') %}
+
+  <div class="col-sm-{{sm_col_width}}">
+    {% if file.type == 'image' %}
+      <div class="panel-body">{{ insert_image(file.url, file.path, 500) }}</div>
+    {% elif file.type == 'video' %}
+       <div class="panel-body">{{ insert_video(file.video, 500) }}</div>
+    {% endif %}
+    {% if file.description is defined %}
+      <div class="panel-footer">{{ file.description }}</div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# HTML STARTS HERE #}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+  <style>
+    div .title {
+      background-color: #88888f;
+    }
+  </style>
+</head>
+
+<body>
+<div class="jumbotron text-center">
+  <h1>OpenSpace Media</h1>
+  <p>This page is currently an experiment and none of the images are released under any licenses <b>yet</b></p>
+  {# <p>A collection of media samples created from OpenSpace that are free to used under the CC-BY license.</p> #}
+</div>
+
+<div class="container-fluid">
+{% for item in items.directories recursive %}
+  <div class="panel-group row">
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <h{{loop.depth}} class="panel-title">
+          <a data-toggle="collapse" href="#collapse-header-{{loop.depth}}-{{loop.index}}">{{ item.name }}</a>
+        </h{{loop.depth}}>
+      </div>
+      <div id="collapse-header-{{loop.depth}}-{{loop.index}}" class="panel-collapse collapse in">
+        <div class="panel panel-default">
+          {% for f in item.files %}
+            {{ insert_element(f) }}
+          {% else %}
+            <div class="panel-body" />
+          {% endfor %}
+        </div>
+        <div>
+          {{ loop(item.directories) }}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+
+</body>
+</html>
