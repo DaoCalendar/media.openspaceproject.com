@@ -1,35 +1,25 @@
-{% set global = namespace(nColumns = 4) %}
-
 {% macro insert_image(url, path, width) %}
   <a href="{{ url }}">
-    <figure>
-      <img class="img-fluid rounded" src="{{ url }}" alt="{{ path }}" width="{{ width }}" />
-    </figure>
+    <img src="{{ url }}" alt="{{ path }}"/>
   </a>
 {% endmacro %}
 
 {% macro insert_video(video, width) %}
-  <div class="embed-responsive embed-responsive-16by9">
-    <iframe class="embed-responsive-item" width="{{ width }}" height="{{ width / (1920.0/1080.0) }}" src="{{ video }}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-  </div>
+  <iframe src="{{ video }}" frameborder="0" allowfullscreen></iframe>
 {% endmacro %}
 
 {% macro insert_element(file) %}
-  {% set sm_col_width = ((12 / global.nColumns)|string).rstrip('.0') %}
-
-  <div class="col-sm-{{sm_col_width}}">
     {% if file.type == 'image' %}
-      <div class="panel-body">{{ insert_image(file.url, file.path, 500) }}</div>
+      {{ insert_image(file.url, file.path, 500) }}
     {% elif file.type == 'video' %}
-       <div class="panel-body">{{ insert_video(file.video, 500) }}</div>
+       {{ insert_video(file.video, 500) }}
     {% endif %}
     {% if file.description is defined %}
-      <div class="panel-footer">{{ file.description }}</div>
+      {{ file.description }}
     {% endif %}
-  </div>
 {% endmacro %}
 
-{# HTML STARTS HERE #}
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -39,9 +29,9 @@
   <meta name="keywords" content="OpenSpace, media, NASA, astrovisualization">
   <meta name="author" content="OpenSpace Team">
 
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+  <script src="https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js"></script>
 
   <style>
     footer {
@@ -50,54 +40,107 @@
       font-size: 20px;
       text-align: center;
     }
+
+    iframe, img {
+      width: 100%;
+      height: auto;
+    }
+
+    .grid-sizer, .grid-item {
+      width: 250px;
+    }
   </style>
 </head>
 
 <body>
-<div class="jumbotron text-center">
+<div class="title">
   <h1>OpenSpace Media</h1>
   <p>This page is currently an experiment and none of the images are released under any licenses <b>yet</b></p>
   {# <p>A collection of media samples created from OpenSpace that are free to used under the CC-BY license.</p> #}
 </div>
 
 <main>
-
-<div>
-  <button class="btn btn-primary" type="button" data-toggle="collapse" data-target=".multi-collapse" aria-expanded="false" aria-controls="multiCollapseExample1 multiCollapseExample2">Toggle all groups</button>
-</div>
-
-<div class="container-fluid">
-{% for item in items.directories recursive %}
-  <div class="panel-group row">
-    <div class="panel panel-default">
-      <div class="panel-heading">
-        <h{{loop.depth}} class="panel-title">
-          <a data-toggle="collapse" href="#collapse-header-{{loop.depth}}-{{loop.index}}">{{ item.name }}</a>
-        </h{{loop.depth}}>
-      </div>
-      <div id="collapse-header-{{loop.depth}}-{{loop.index}}" class="panel-collapse collapse in multi-collapse">
-        <div class="panel panel-default">
-          {% for f in item.files %}
-            {{ insert_element(f) }}
-          {% else %}
-            <div class="panel-body" />
-          {% endfor %}
-        </div>
-        <div>
-          {{ loop(item.directories) }}
-        </div>
-      </div>
-    </div>
+{#   <div class="button-group filters-button-group">
+    <button class="button is-checked" data-filter="*">show all</button>
+    {% for tag in tags %}
+      <button class="button" data-filter=".{{ tag }}">{{ tag }}</button>
+    {% endfor %}
+    <button class="button" data-filter=".no-tag-provided">no tags</button>
   </div>
-{% endfor %}
-</div>
-</main>
+ #}
 
+  <div id="form-ui">
+    <p>
+    {% for tag in tags %}
+      <label><input type="checkbox" value=".{{ tag.identifier }}" /> {{ tag.name }}</label>
+    {% endfor %}
+    </p>
+  </div>
+
+  <div class="grid">
+    <div class="grid-sizer"></div>
+    {% for item in items %}
+    {% if item.tags is defined %}
+      <div class="grid-item {{ item.tags }}">
+    {% else %}
+      <div class="grid-item no-tag-provided">
+    {% endif %}
+        {{ insert_element(item) }}
+      </div>
+    {% endfor %}
+  </div>
+</main>
 </body>
+
+
 
 <footer>
   <div>OpenSpace Teams</div>
   <div><a href="https://openspaceproject.com">GitHub: OpenSpace Project</a></div>
 </footer>
+
+
+<script type="text/javascript">
+  $(function() {
+    $('.grid').imagesLoaded( function() {
+      $('.grid').isotope({
+        itemSelector: '.grid-item',
+        percentPosition: true,
+        stagger: 1,
+        transitionDuration: 500,
+        masonry: {
+          columnWidth: '.grid-sizer'
+        }
+      })
+    });
+
+    // $('.filters-button-group').on('click', 'button', function() {
+    //   let filterValue = $(this).attr('data-filter');
+    //   $('.grid').isotope({ filter: filterValue });
+    // });
+
+    // $('.button-group').each(function(i, buttonGroup) {
+    //   let $buttonGroup = $(buttonGroup);
+    //   $buttonGroup.on('click', 'button', function() {
+    //     $buttonGroup.find('.is_checked').removeClass('is-checked');
+    //     $(this).addClass('is-checked');
+    //   });
+    // });
+    
+    let $checkboxes = $('#form-ui input');
+    $checkboxes.change(function() {
+      let inclusives = [];
+      $checkboxes.each(function(i, elem) {
+        if (elem.checked) {
+          inclusives.push(elem.value);
+        }
+      });
+
+      let filterValue = inclusives.length ? inclusives.join(', ') : '*';
+      $('.grid').isotope({ filter: filterValue });
+    });
+
+  });
+</script>
 
 </html>

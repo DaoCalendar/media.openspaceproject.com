@@ -57,6 +57,7 @@ parse_tree(commit_sha, '')
 
 # Now we are doing the post processing to provide richer information
 files = []
+all_tags = ''
 image_extensions = [ '.png', '.jpg', '.jpeg' ]
 video_extensions = [ '.video' ]
 for file in raw_files:
@@ -74,14 +75,17 @@ for file in raw_files:
 
   f = {
     'path': file,
-    'type': 'image',
     'url': 'https://raw.github.com/{}/master{}'.format(args.repo, file)
   }
 
   desc_file = path_components[0] + '.txt'
   if desc_file in raw_files:
     req = requests.get('https://raw.github.com/{}/master{}'.format(args.repo, desc_file))
-    f['description'] = req.text
+    tags = req.text.split('\n')[0]
+    description = '\n'.join(req.text.split('\n')[1:])
+    f['tags'] = tags
+    all_tags = all_tags + ' ' + tags
+    f['description'] = description
 
   if extension in image_extensions:
     f['type'] = 'image'
@@ -93,51 +97,31 @@ for file in raw_files:
     f['video'] = req.text
     files.append(f)
 
-grouped_files = {
-  'name': 'root',
-  'files': [],
-  'directories': []
-}
-for f in files:
-  path = f['path']
-  # We need to remove the first and last part of the path;  the first part is always empty
-  # as all paths start with a leading '/' and the last part of the path is the filename
-  path_components = path.split('/')[1:-1]
+# The list starts with an empty character which we don't want
+all_tags = all_tags[1:].split(' ')
+# Make the list unique
+all_tags = list(set(all_tags))
+all_tags.sort()
 
-  def add_to_dictionary(dict, components, file):
-    def find_directory(dict, name):
-      for d in dict:
-        # We are trying to find whether we have visited this directory before
-        if d['name'] == name:
-          return d
-      return None
+tag_infos = []
+for t in all_tags:
+  tag_infos.append({ 'identifier': t })
 
-    if len(components) == 0:
-      # If there are no more components, we have to be dealing with a file here
-      if not dict['files']:
-        dict['files'] = []
-      dict['files'].append(file)
-    else:
-      front = components[0]
-      if not dict['directories']:
-        dict['directories'] = []
+with open('tag-naming.txt') as f:
+  content = f.read();
+  lines = content.split('\n')
+  
+  for l in lines:
+    tag = l.split(' ')[0]
+    name = ' '.join(l.split(' ')[1:])
 
-      pos = find_directory(dict['directories'], front)
-      if pos is None:
-        dict['directories'].append({
-          'name': front,
-          'files': [],
-          'directories': []
-        })
-        pos = find_directory(dict['directories'], front)
-
-      add_to_dictionary(pos, components[1:], file)
-
-  add_to_dictionary(grouped_files, path_components, f)
-
+    for t in tag_infos:
+      if t['identifier'] == tag:
+        t['name'] = name
 
 env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'), autoescape=jinja2.select_autoescape([ 'html', 'xml' ]))
+# template = env.get_template('index.html.jinja')
 template = env.get_template('index.html.jinja')
-res = template.render(items=grouped_files)
+res = template.render(items=files, tags=tag_infos)
 with open(args.dest + '/index.html', 'w') as f:
   f.write(res)
