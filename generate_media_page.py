@@ -5,6 +5,65 @@ import os
 import requests
 import sys
 
+############
+## Header
+############
+
+# repo: The repository ("organization/repository") from which we want to retrieve the current commit sha
+# auth a HTTPBasicAuth that is used to authenticate the GitHub requests
+# returns the current commit sha
+def get_current_sha(repo, auth):
+  git_commits_url = 'https://api.github.com/repos/{}/commits'.format(repo)
+  commit_content = requests.get(git_commits_url, auth=auth).json()
+  commit_sha = commit_content[0]['sha']
+  print('Remote commit: {}'.format(commit_sha))
+  return commit_sha
+
+# previous_commit_hash_file: The full file name of the file that contains the previous hash
+# commit_sha: The current commit sha
+# returns True if the webpage is current, False otherwise
+def webpage_is_current(previous_commit_hash_file, commit_sha):
+  if os.path.exists(previous_commit_hash_file):
+    with open(previous_commit_hash_file) as f:
+      last_commit = f.read()
+      print('Last commit: {}'.format(last_commit))
+      return last_commit == commit_sha
+  else:
+    return False
+
+def load_all_files(commit_sha):
+  files = []
+  def parse_tree(sha, path):
+    print(sha)
+    git_tree_contents = 'https://api.github.com/repos/{}/git/trees/'.format(args.repo)
+    data = requests.get(git_tree_contents + sha, auth=auth).json()
+    for t in data['tree']:
+      full_path = path + '/' + t['path']
+      if t['type'] == 'tree':
+        parse_tree(t['sha'], full_path)
+      elif t['type'] == 'blob':
+        files.append(full_path)
+      else:
+        print('unknown type {}'.format(t['type']))
+  parse_tree(commit_sha, '')
+  return files
+
+def filtered_files(files):
+  image_extensions = [ '.png', '.jpg', '.jpeg' ]
+  video_extensions = [ '.video' ]
+  for file in files:
+    path_components = os.path.splitext(file)
+    extension = path_components[1].lower()
+    # We might have additional files that we want to ignore, a prominent example being README.md
+    if not ((extension in image_extensions) or (extension in video_extensions)):
+      files.remove(file)
+
+  return files
+
+############
+## Main
+############
+
 desc = 'Generates a static webpage with images and videos for the http://media.openspaceproject.com webpage, based off the content on a GitHub repository'
 
 parser = argparse.ArgumentParser(description=desc, epilog='')
@@ -20,40 +79,19 @@ args = parser.parse_args()
 previous_commit_hash_file = args.dest + '/last_commit'
 auth = requests.auth.HTTPBasicAuth(args.username, args.token)
 
-git_commits_url = 'https://api.github.com/repos/{}/commits'.format(args.repo)
-git_tree_contents = 'https://api.github.com/repos/{}/git/trees/'.format(args.repo)
-
-commit_content = requests.get(git_commits_url, auth=auth).json()
-commit_sha = commit_content[0]['sha']
-print('Remote commit: {}'.format(commit_sha))
-
+commit_sha = get_current_sha(args.repo, auth)
 if not os.path.exists(args.dest):
     print('Creating directory {}'.format(args.dest))
     os.makedirs(args.dest)
 
-if os.path.exists(previous_commit_hash_file):
-  with open(previous_commit_hash_file) as f:
-    last_commit = f.read()
-    print('Last commit: {}'.format(last_commit))
-    if last_commit == commit_sha:
-      # The already created page was created with the most current hash, so we have
-      # nothing to do
-      sys.exit()
+if webpage_is_current(previous_commit_hash_file, commit_sha):
+  sys.exit()
 
-# If we get here, then it has been determined that we need to recreate the webpage
-
-# raw_files contains the raw information from the source tree, without any postprocessing
-raw_files = []
-def parse_tree(sha, path):
-  print(sha)
-  data = requests.get(git_tree_contents + sha, auth=auth).json()
-  for t in data['tree']:
-    full_path = path + '/' + t['path']
-    if t['type'] == 'tree':
-      parse_tree(t['sha'], full_path)
-    if t['type'] == 'blob':
-      raw_files.append(full_path)
-parse_tree(commit_sha, '')
+# raw_files contains a list of all raw files from the source tree, without any postprocessing
+raw_files = load_all_files(commit_sha)
+files = filtered_files(raw_files)
+print('raw_files', raw_files)
+print('files', files)
 
 # Now we are doing the post processing to provide richer information
 files = []
