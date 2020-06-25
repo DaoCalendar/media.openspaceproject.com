@@ -72,7 +72,11 @@
   <div id="form-ui">
     <p>
     {% for tag in tags %}
-      <label><input type="checkbox" value=".{{ tag.identifier }}" /> {{ tag.name }}</label>
+      {% if tag.name is defined %}
+        <label><input type="checkbox" value=".{{ tag.identifier }}" /> {{ tag.name }}</label>
+      {% else %}
+        <label><input type="checkbox" value=".{{ tag.identifier }}" /> {{ tag.identifier }}</label>
+      {% endif %}
     {% endfor %}
     </p>
   </div>
@@ -114,19 +118,6 @@
       })
     });
 
-    // $('.filters-button-group').on('click', 'button', function() {
-    //   let filterValue = $(this).attr('data-filter');
-    //   $('.grid').isotope({ filter: filterValue });
-    // });
-
-    // $('.button-group').each(function(i, buttonGroup) {
-    //   let $buttonGroup = $(buttonGroup);
-    //   $buttonGroup.on('click', 'button', function() {
-    //     $buttonGroup.find('.is_checked').removeClass('is-checked');
-    //     $(this).addClass('is-checked');
-    //   });
-    // });
-    
     let $checkboxes = $('#form-ui input');
     $checkboxes.change(function() {
       let inclusives = [];

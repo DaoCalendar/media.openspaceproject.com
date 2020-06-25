@@ -75,15 +75,20 @@ for file in raw_files:
 
   f = {
     'path': file,
+    'tags': '',
     'url': 'https://raw.github.com/{}/master{}'.format(args.repo, file)
   }
+  comps = path_components[0].split('/')[1:-1]
+  f['tags'] = ' '.join(comps)
+  all_tags = all_tags + ' ' + ' '.join(comps)
+
 
   desc_file = path_components[0] + '.txt'
   if desc_file in raw_files:
     req = requests.get('https://raw.github.com/{}/master{}'.format(args.repo, desc_file))
     tags = req.text.split('\n')[0]
     description = '\n'.join(req.text.split('\n')[1:])
-    f['tags'] = tags
+    f['tags'] = f['tags'] + ' ' + tags
     all_tags = all_tags + ' ' + tags
     f['description'] = description
 
@@ -106,6 +111,7 @@ all_tags.sort()
 tag_infos = []
 for t in all_tags:
   tag_infos.append({ 'identifier': t })
+
 
 with open('tag-naming.txt') as f:
   content = f.read();
