@@ -12,7 +12,7 @@
     {% if file.type == 'image' %}
       {{ insert_image(file.url, file.path, 500) }}
     {% elif file.type == 'video' %}
-       {{ insert_video(file.video, 500) }}
+       {{ insert_video(file.url, 500) }}
     {% endif %}
     {% if file.description is defined %}
       {{ file.description }}

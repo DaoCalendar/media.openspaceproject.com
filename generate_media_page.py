@@ -5,9 +5,9 @@ import os
 import requests
 import sys
 
-############
-## Header
-############
+##############
+##  Header  ##
+##############
 
 # repo: The repository ("organization/repository") from which we want to retrieve the current commit sha
 # auth a HTTPBasicAuth that is used to authenticate the GitHub requests
@@ -31,10 +31,11 @@ def webpage_is_current(previous_commit_hash_file, commit_sha):
   else:
     return False
 
+# commit_sha: The hash of the comit for which all files should be loaded
+# returns A list of all files with full path and a leading '/' character
 def load_all_files(commit_sha):
   files = []
   def parse_tree(sha, path):
-    print(sha)
     git_tree_contents = 'https://api.github.com/repos/{}/git/trees/'.format(args.repo)
     data = requests.get(git_tree_contents + sha, auth=auth).json()
     for t in data['tree']:
@@ -48,20 +49,125 @@ def load_all_files(commit_sha):
   parse_tree(commit_sha, '')
   return files
 
+# file: The path to a file
+# returns True if the file is an image file, False otherwise
+def is_image_file(file):
+  path_components = os.path.splitext(file)
+  extension = path_components[1].lower()
+  return extension in [ '.png', '.jpg', '.jpeg' ]
+
+# file: The path to a file
+# returns True if the file is an video file, False otherwise
+def is_video_file(file):
+  path_components = os.path.splitext(file)
+  extension = path_components[1].lower()
+  return extension in [ '.video' ]
+
+# files: A list of all files
+# returns A filtered list that only contains images or videos
 def filtered_files(files):
-  image_extensions = [ '.png', '.jpg', '.jpeg' ]
-  video_extensions = [ '.video' ]
+  result = []
+  for file in files:
+    # We might have additional files that we want to ignore, a prominent example being README.md
+    if is_image_file(file) or is_video_file(file):
+      result.append(file)
+  return result
+
+class File:
+  TypeImage = 'image'
+  TypeVideo = 'video'
+
+  def __init__(self):
+    # The type of this file. Should be TypeImage or TypeVideo
+    self.type = ''
+    # The local path to the file in the repository
+    self.path = '';
+    # The full URL to get to the file in the repository
+    self.url = '';
+    # A list of tags that are applied to this file
+    self.tags = '' # @TODO Change to array
+    # The full descriptive text for this file
+    self.description = ''
+
+  def __repr__(self):
+    return '{{ Type: {}\tPath: {}\tURL: {}\tTags: {}\tDescription: {} }}'.format(self.type, self.path, self.url, self.tags, self.description)
+
+def classify_files(repo, files):
+  def split_by_folder(t):
+    comps = t.split('/')[1:-1]
+    return ' '.join(comps)
+
+  result = []
   for file in files:
     path_components = os.path.splitext(file)
     extension = path_components[1].lower()
-    # We might have additional files that we want to ignore, a prominent example being README.md
-    if not ((extension in image_extensions) or (extension in video_extensions)):
-      files.remove(file)
+    url = 'https://raw.github.com/{}/master{}'.format(repo, file)
 
-  return files
+    f = File()
+    f.path = file
+    f.tags = split_by_folder(path_components[0])
+
+    if is_image_file(file):
+      f.type = File.TypeImage
+      f.url = url
+    if is_video_file(file):
+      f.type = File.TypeVideo
+      req = requests.get(url)
+      f.url = req.text
+    result.append(f)
+  return result
+
+def add_descriptions(repo, files, all_files):
+  def parse_description(text):
+      tags = text.split('\n')[0]
+      description = '\n'.join(text.split('\n')[1:])
+      return tags, description
+
+  for file in files:
+    path_components = os.path.splitext(file.path)
+    desc_file = os.path.splitext(file.path)[0] + '.txt'
+    if desc_file in all_files:
+      req = requests.get('https://raw.github.com/{}/master{}'.format(repo, desc_file))
+      tags, desc = parse_description(req.text)
+      file.tags = file.tags + ' ' + tags
+      file.description = desc
+
+# files: An array of classified files
+# returns A sorted flat list of all unique tags
+def collect_tags(files):
+  tags = []
+  for file in files:
+    ts = file.tags.split(' ')
+    tags = tags + ts
+  tags = list(set(tags))
+  tags.sort()
+  return tags
+
+# tags: A list of all tags
+# tag_info_file: A file containing information mapping from identifier -> name
+# returns A list of Dictionary with 'identifier', 'name' information
+def classify_tags(tags, tag_info_file):
+  tag_infos = []
+  for t in tags:
+    tag_infos.append({ 'identifier': t })
+
+  with open(tag_info_file) as f:
+    content = f.read();
+    lines = content.split('\n')
+    
+    for l in lines:
+      tag = l.split(' ')[0]
+      name = ' '.join(l.split(' ')[1:])
+      for t in tag_infos:
+        if t['identifier'] == tag:
+          t['name'] = name
+
+  return tag_infos
+
+
 
 ############
-## Main
+##  Main  ##
 ############
 
 desc = 'Generates a static webpage with images and videos for the http://media.openspaceproject.com webpage, based off the content on a GitHub repository'
@@ -79,93 +185,46 @@ args = parser.parse_args()
 previous_commit_hash_file = args.dest + '/last_commit'
 auth = requests.auth.HTTPBasicAuth(args.username, args.token)
 
+print('Retrieve current SHA')
 commit_sha = get_current_sha(args.repo, auth)
 if not os.path.exists(args.dest):
     print('Creating directory {}'.format(args.dest))
     os.makedirs(args.dest)
 
+print('Check if webpage is current')
 if webpage_is_current(previous_commit_hash_file, commit_sha):
   sys.exit()
 
-# raw_files contains a list of all raw files from the source tree, without any postprocessing
+print('Load all files')
 raw_files = load_all_files(commit_sha)
+# print('rf', raw_files)
+
+print('Filter files')
 files = filtered_files(raw_files)
-print('raw_files', raw_files)
-print('files', files)
+# print('f', files)
 
-# Now we are doing the post processing to provide richer information
-files = []
-all_tags = ''
-image_extensions = [ '.png', '.jpg', '.jpeg' ]
-video_extensions = [ '.video' ]
-for file in raw_files:
-  path_components = os.path.splitext(file)
-  extension = path_components[1].lower()
+print('Classifying files')
+classified_files = classify_files(args.repo, files)
+# print('c', classified_files)
 
-  # txt files are used for additional information about images, such as captions,
-  # attributions etc. We are explicitly looking for these, so we can safely jump over these
-  # here
-  if extension == '.txt':
-    continue
-  # We might have additional files that we want to ignore, a prominent example being README.md
-  if not ((extension in image_extensions) or (extension in video_extensions)):
-    continue
+print('Load descriptions')
+add_descriptions(args.repo, classified_files, raw_files)
+# print('cd', classified_files)
 
-  f = {
-    'path': file,
-    'tags': '',
-    'url': 'https://raw.github.com/{}/master{}'.format(args.repo, file)
-  }
-  comps = path_components[0].split('/')[1:-1]
-  f['tags'] = ' '.join(comps)
-  all_tags = all_tags + ' ' + ' '.join(comps)
+print('Collect tags')
+all_tags = collect_tags(classified_files)
+# print('at', all_tags)
 
+print('Classify tags')
+classified_tags = classify_tags(all_tags, 'tag-naming.txt')
+# print('ct', classified_tags)
 
-  desc_file = path_components[0] + '.txt'
-  if desc_file in raw_files:
-    req = requests.get('https://raw.github.com/{}/master{}'.format(args.repo, desc_file))
-    tags = req.text.split('\n')[0]
-    description = '\n'.join(req.text.split('\n')[1:])
-    f['tags'] = f['tags'] + ' ' + tags
-    all_tags = all_tags + ' ' + tags
-    f['description'] = description
-
-  if extension in image_extensions:
-    f['type'] = 'image'
-    files.append(f)
-
-  if extension in video_extensions:
-    f['type'] = 'video'
-    req = requests.get(f['url'])
-    f['video'] = req.text
-    files.append(f)
-
-# The list starts with an empty character which we don't want
-all_tags = all_tags[1:].split(' ')
-# Make the list unique
-all_tags = list(set(all_tags))
-all_tags.sort()
-
-tag_infos = []
-for t in all_tags:
-  tag_infos.append({ 'identifier': t })
-
-
-with open('tag-naming.txt') as f:
-  content = f.read();
-  lines = content.split('\n')
-  
-  for l in lines:
-    tag = l.split(' ')[0]
-    name = ' '.join(l.split(' ')[1:])
-
-    for t in tag_infos:
-      if t['identifier'] == tag:
-        t['name'] = name
-
+print('Creating page')
 env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'), autoescape=jinja2.select_autoescape([ 'html', 'xml' ]))
 # template = env.get_template('index.html.jinja')
 template = env.get_template('index.html.jinja')
-res = template.render(items=files, tags=tag_infos)
+res = template.render(items=classified_files, tags=classified_tags)
+
+print('Writing page')
 with open(args.dest + '/index.html', 'w') as f:
   f.write(res)
