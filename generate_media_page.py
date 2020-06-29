@@ -146,13 +146,16 @@ def classify_files(repo, files):
 
 def add_descriptions(repo, files, all_files):
   def parse_description(text):
-      tags = text.split('\n')[0]
-      description = '\n'.join(text.split('\n')[1:])
-      return tags, description
+      data = json.loads(text)
+      print('aaa', data)
+      return ' '.join(data['tags']), data['desc']
+      # tags = text.split('\n')[0]
+      # description = '\n'.join(text.split('\n')[1:])
+      # return tags, description
 
   for file in files:
     path_components = os.path.splitext(file.path)
-    desc_file = os.path.splitext(file.path)[0] + '.txt'
+    desc_file = os.path.splitext(file.path)[0] + '.json'
     if desc_file in all_files:
       req = requests.get('https://raw.github.com/{}/master{}'.format(repo, desc_file))
       tags, desc = parse_description(req.text)
@@ -223,7 +226,7 @@ add_descriptions(args.repo, classified_files, raw_files)
 
 print('Collect tags')
 all_tags = collect_tags(classified_files)
-# print('at', all_tags)
+print('at', all_tags)
 
 
 print('Creating page')
