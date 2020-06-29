@@ -71,11 +71,11 @@
 
   <div id="form-ui">
     <p>
-    {% for tag in tags %}
-      {% if tag.name is defined %}
-        <label><input type="checkbox" value=".{{ tag.identifier }}" /> {{ tag.name }}</label>
+    {% for tag in all_tags %}
+      {% if tag in tag_names %}
+        <label><input type="checkbox" value=".{{ tag }}" /> {{ tag_names[tag] }}</label>
       {% else %}
-        <label><input type="checkbox" value=".{{ tag.identifier }}" /> {{ tag.identifier }}</label>
+        <label><input type="checkbox" value=".{{ tag }}" /> {{ tag }}</label>
       {% endif %}
     {% endfor %}
     </p>

@@ -9,6 +9,52 @@ import sys
 ##  Header  ##
 ##############
 
+CurrentVersion = 1.0
+
+# class TagMapping:
+#   def __init__(self, identifier, name):
+#     self.identifier = identifier
+#     self.name = name
+
+#   def __repr__(self):
+#     return '{{ {}: {} }}'.format(self.identifier, self.name)
+
+class Configuration:
+  # file: File containing the configuration information
+  def __init__(self, file):
+    with open(file) as f:
+      data = json.load(f)
+      self.version = data['version']
+      self.tags = data['tags']
+      # self.tags = []
+
+      # # Convert from the JSON format to a flat list
+      # for key in data['tags']:
+      #   self.tags.append(TagMapping(key, data['tags'][key]))
+
+  def __repr__(self):
+    return '{{ Version: {}, Tags: {}'.format(self.version, self.tags)
+
+class File:
+  TypeImage = 'image'
+  TypeVideo = 'video'
+
+  def __init__(self):
+    # The type of this file. Should be TypeImage or TypeVideo
+    self.type = ''
+    # The local path to the file in the repository
+    self.path = '';
+    # The full URL to get to the file in the repository
+    self.url = '';
+    # A list of tags that are applied to this file
+    self.tags = '' # @TODO Change to array
+    # The full descriptive text for this file
+    self.description = ''
+
+  def __repr__(self):
+    return '{{ Type: {}\tPath: {}\tURL: {}\tTags: {}\tDescription: {} }}'.format(self.type, self.path, self.url, self.tags, self.description)
+
+
 # repo: The repository ("organization/repository") from which we want to retrieve the current commit sha
 # auth a HTTPBasicAuth that is used to authenticate the GitHub requests
 # returns the current commit sha
@@ -73,25 +119,6 @@ def filtered_files(files):
       result.append(file)
   return result
 
-class File:
-  TypeImage = 'image'
-  TypeVideo = 'video'
-
-  def __init__(self):
-    # The type of this file. Should be TypeImage or TypeVideo
-    self.type = ''
-    # The local path to the file in the repository
-    self.path = '';
-    # The full URL to get to the file in the repository
-    self.url = '';
-    # A list of tags that are applied to this file
-    self.tags = '' # @TODO Change to array
-    # The full descriptive text for this file
-    self.description = ''
-
-  def __repr__(self):
-    return '{{ Type: {}\tPath: {}\tURL: {}\tTags: {}\tDescription: {} }}'.format(self.type, self.path, self.url, self.tags, self.description)
-
 def classify_files(repo, files):
   def split_by_folder(t):
     comps = t.split('/')[1:-1]
@@ -143,28 +170,6 @@ def collect_tags(files):
   tags.sort()
   return tags
 
-# tags: A list of all tags
-# tag_info_file: A file containing information mapping from identifier -> name
-# returns A list of Dictionary with 'identifier', 'name' information
-def classify_tags(tags, tag_info_file):
-  tag_infos = []
-  for t in tags:
-    tag_infos.append({ 'identifier': t })
-
-  with open(tag_info_file) as f:
-    content = f.read();
-    lines = content.split('\n')
-    
-    for l in lines:
-      tag = l.split(' ')[0]
-      name = ' '.join(l.split(' ')[1:])
-      for t in tag_infos:
-        if t['identifier'] == tag:
-          t['name'] = name
-
-  return tag_infos
-
-
 
 ############
 ##  Main  ##
@@ -184,6 +189,11 @@ args = parser.parse_args()
 # has changed
 previous_commit_hash_file = args.dest + '/last_commit'
 auth = requests.auth.HTTPBasicAuth(args.username, args.token)
+
+print('Load configuration')
+config = Configuration('config.json')
+if config.version != CurrentVersion:
+  print('Configuration file version {} different from current version {}'.format(config.version, CurrentVersion))
 
 print('Retrieve current SHA')
 commit_sha = get_current_sha(args.repo, auth)
@@ -215,15 +225,12 @@ print('Collect tags')
 all_tags = collect_tags(classified_files)
 # print('at', all_tags)
 
-print('Classify tags')
-classified_tags = classify_tags(all_tags, 'tag-naming.txt')
-# print('ct', classified_tags)
 
 print('Creating page')
 env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'), autoescape=jinja2.select_autoescape([ 'html', 'xml' ]))
 # template = env.get_template('index.html.jinja')
 template = env.get_template('index.html.jinja')
-res = template.render(items=classified_files, tags=classified_tags)
+res = template.render(items=classified_files, all_tags=all_tags, tag_names=config.tags)
 
 print('Writing page')
 with open(args.dest + '/index.html', 'w') as f:
