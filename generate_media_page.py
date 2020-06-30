@@ -47,7 +47,7 @@ class File:
     # The full URL to get to the file in the repository
     self.url = '';
     # A list of tags that are applied to this file
-    self.tags = '' # @TODO Change to array
+    self.tags = []
     # The full descriptive text for this file
     self.description = ''
 
@@ -132,7 +132,7 @@ def classify_files(repo, files):
 
     f = File()
     f.path = file
-    f.tags = split_by_folder(path_components[0])
+    f.tags = path_components[0].split('/')[1:-1]
 
     if is_image_file(file):
       f.type = File.TypeImage
@@ -148,7 +148,7 @@ def add_descriptions(repo, files, all_files):
   def parse_description(text):
       data = json.loads(text)
       print('aaa', data)
-      return ' '.join(data['tags']), data['desc']
+      return data['tags'], data['desc']
       # tags = text.split('\n')[0]
       # description = '\n'.join(text.split('\n')[1:])
       # return tags, description
@@ -159,7 +159,7 @@ def add_descriptions(repo, files, all_files):
     if desc_file in all_files:
       req = requests.get('https://raw.github.com/{}/master{}'.format(repo, desc_file))
       tags, desc = parse_description(req.text)
-      file.tags = file.tags + ' ' + tags
+      file.tags = file.tags + tags
       file.description = desc
 
 # files: An array of classified files
@@ -167,8 +167,7 @@ def add_descriptions(repo, files, all_files):
 def collect_tags(files):
   tags = []
   for file in files:
-    ts = file.tags.split(' ')
-    tags = tags + ts
+    tags = tags + file.tags
   tags = list(set(tags))
   tags.sort()
   return tags
