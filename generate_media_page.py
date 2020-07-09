@@ -115,7 +115,7 @@ def filtered_files(files):
   result = []
   for file in files:
     # We might have additional files that we want to ignore, a prominent example being README.md
-    if is_image_file(file) or is_video_file(file):
+    if (is_image_file(file) or is_video_file(file)) and not "-thumbnail" in file:
       result.append(file)
   return result
 
@@ -137,6 +137,9 @@ def classify_files(repo, files):
     if is_image_file(file):
       f.type = File.TypeImage
       f.url = url
+      base, ext = os.path.splitext(url)
+      f.thumbnail = base + '-thumbnail' + ext
+      print(base, ext, f.thumbnail)
     if is_video_file(file):
       f.type = File.TypeVideo
       req = requests.get(url)

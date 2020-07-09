@@ -9,7 +9,7 @@ extensions = [
 ]
 
 for ext in extensions:
-  for infile in glob.glob(ext):
+  for infile in glob.glob(ext, recursive=True):
     file, ext = os.path.splitext(infile)
     if file.endswith('-thumbnail'):
       continue

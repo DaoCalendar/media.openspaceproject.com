@@ -1,9 +1,9 @@
-{% macro insert_image(url, path, description) %}
+{% macro insert_image(url, thumbnail, path, description) %}
   <a href="{{ url }}">
     {% if description is defined %}
-      <img src="{{ url }}" alt="{{ path }}" title="{{ description }}" />
+      <img src="{{ thumbnail }}" alt="{{ path }}" title="{{ description }}" />
     {% else %}
-      <img src="{{ url }}" alt="{{ path }}"/>
+      <img src="{{ thumbnail }}" alt="{{ path }}"/>
     {% endif %}
   </a>
 {% endmacro %}
@@ -14,7 +14,7 @@
 
 {% macro insert_element(file) %}
     {% if file.type == 'image' %}
-      {{ insert_image(file.url, file.path, file.description) }}
+      {{ insert_image(file.url, file.thumbnail, file.path, file.description) }}
     {% elif file.type == 'video' %}
        {{ insert_video(file.url, 500) }}
     {% endif %}
