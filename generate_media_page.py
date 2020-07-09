@@ -147,7 +147,6 @@ def classify_files(repo, files):
 def add_descriptions(repo, files, all_files):
   def parse_description(text):
       data = json.loads(text)
-      print('aaa', data)
       return data['tags'], data['desc']
       # tags = text.split('\n')[0]
       # description = '\n'.join(text.split('\n')[1:])
@@ -225,7 +224,7 @@ add_descriptions(args.repo, classified_files, raw_files)
 
 print('Collect tags')
 all_tags = collect_tags(classified_files)
-print('at', all_tags)
+# print('at', all_tags)
 
 
 print('Creating page')

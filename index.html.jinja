@@ -1,6 +1,10 @@
-{% macro insert_image(url, path, width) %}
+{% macro insert_image(url, path, description) %}
   <a href="{{ url }}">
-    <img src="{{ url }}" alt="{{ path }}"/>
+    {% if description is defined %}
+      <img src="{{ url }}" alt="{{ path }}" title="{{ description }}" />
+    {% else %}
+      <img src="{{ url }}" alt="{{ path }}"/>
+    {% endif %}
   </a>
 {% endmacro %}
 
@@ -10,7 +14,7 @@
 
 {% macro insert_element(file) %}
     {% if file.type == 'image' %}
-      {{ insert_image(file.url, file.path, 500) }}
+      {{ insert_image(file.url, file.path, file.description) }}
     {% elif file.type == 'video' %}
        {{ insert_video(file.url, 500) }}
     {% endif %}
@@ -49,6 +53,10 @@
     .grid-sizer, .grid-item {
       width: 250px;
     }
+
+    element {
+      background-color: #dd2222;
+    }
   </style>
 </head>
 
@@ -84,12 +92,12 @@
   <div class="grid">
     <div class="grid-sizer"></div>
     {% for item in items %}
-    {% if item.tags is defined %}
-      <div class="grid-item {{ item.tags }}">
-    {% else %}
-      <div class="grid-item no-tag-provided">
-    {% endif %}
-        {{ insert_element(item) }}
+      {% if item.tags is defined %}
+        <div class="grid-item {{ item.tags }} element">
+      {% else %}
+        <div class="grid-item no-tag-provided element">
+      {% endif %}
+      {{ insert_element(item) }}
       </div>
     {% endfor %}
   </div>
