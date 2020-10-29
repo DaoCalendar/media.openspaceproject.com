@@ -43,9 +43,9 @@ class File:
     # The type of this file. Should be TypeImage or TypeVideo
     self.type = ''
     # The local path to the file in the repository
-    self.path = '';
+    self.path = ''
     # The full URL to get to the file in the repository
-    self.url = '';
+    self.url = ''
     # A list of tags that are applied to this file
     self.tags = []
     # The full descriptive text for this file
@@ -120,18 +120,17 @@ def filtered_files(files):
   return result
 
 def classify_files(repo, files):
-  def split_by_folder(t):
-    comps = t.split('/')[1:-1]
-    return ' '.join(comps)
-
   result = []
   for file in files:
     path_components = os.path.splitext(file)
-    extension = path_components[1].lower()
+    # extension = path_components[1].lower()
     url = 'https://raw.github.com/{}/master{}'.format(repo, file)
 
     f = File()
     f.path = file
+
+    # tags = path_components[0].split('/')[1:-1]
+    # f.tags = ','.tags.join(',')
     f.tags = path_components[0].split('/')[1:-1]
 
     if is_image_file(file):
@@ -139,7 +138,7 @@ def classify_files(repo, files):
       f.url = url
       base, ext = os.path.splitext(url)
       f.thumbnail = base + '-thumbnail' + ext
-      print(base, ext, f.thumbnail)
+      # print(base, ext, f.thumbnail)
     if is_video_file(file):
       f.type = File.TypeVideo
       req = requests.get(url)
@@ -156,7 +155,6 @@ def add_descriptions(repo, files, all_files):
       # return tags, description
 
   for file in files:
-    path_components = os.path.splitext(file.path)
     desc_file = os.path.splitext(file.path)[0] + '.json'
     if desc_file in all_files:
       req = requests.get('https://raw.github.com/{}/master{}'.format(repo, desc_file))
@@ -231,7 +229,7 @@ all_tags = collect_tags(classified_files)
 
 
 print('Creating page')
-env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'), autoescape=jinja2.select_autoescape([ 'html', 'xml' ]))
+env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'), autoescape=jinja2.select_autoescape([ 'html', 'xml' ]), trim_blocks=True, lstrip_blocks=True)
 # template = env.get_template('index.html.jinja')
 template = env.get_template('index.html.jinja')
 res = template.render(items=classified_files, all_tags=all_tags, tag_names=config.tags)

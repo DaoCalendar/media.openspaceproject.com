@@ -1,15 +1,18 @@
+{% set thumbnail_width = 256 %}
+{% set thumbnail_height = 256 %}
+
 {% macro insert_image(url, thumbnail, path, description) %}
   <a href="{{ url }}">
     {% if description is defined %}
-      <img src="{{ thumbnail }}" alt="{{ path }}" title="{{ description }}" />
+      <img src="{{ thumbnail }}" alt="{{ path }}" title="{{ description }}" width="{{ thumbnail_width }}" height="{{ thumbnail_height }}" loading="lazy" />
     {% else %}
-      <img src="{{ thumbnail }}" alt="{{ path }}"/>
+      <img src="{{ thumbnail }}" alt="{{ path }}" width="{{ thumbnail_width }}" height="{{ thumbnail_height }}" loading="lazy" />
     {% endif %}
   </a>
 {% endmacro %}
 
 {% macro insert_video(video, width) %}
-  <iframe src="{{ video }}" frameborder="0" allowfullscreen></iframe>
+  <iframe src="{{ video }}" frameborder="0" allowfullscreen SameSite="Strict"></iframe>
 {% endmacro %}
 
 {% macro insert_element(file) %}
@@ -81,9 +84,9 @@
     <p>
     {% for tag in all_tags %}
       {% if tag in tag_names %}
-        <label><input type="checkbox" value=".{{ tag }}" /> {{ tag_names[tag] }}</label>
+        <label><input type="checkbox" value=".{{ tag }}"/>{{ tag_names[tag] }}</label>
       {% else %}
-        <label><input type="checkbox" value=".{{ tag }}" /> {{ tag }}</label>
+        <label><input type="checkbox" value=".{{ tag }}"/>{{ tag }}</label>
       {% endif %}
     {% endfor %}
     </p>
@@ -93,7 +96,7 @@
     <div class="grid-sizer"></div>
     {% for item in items %}
       {% if item.tags is defined %}
-        <div class="grid-item {{ item.tags }} element">
+        <div class="grid-item {{ item.tags|join(' ') }} element">
       {% else %}
         <div class="grid-item no-tag-provided element">
       {% endif %}
