@@ -1,5 +1,7 @@
 {% set thumbnail_width = 256 %}
 {% set thumbnail_height = 256 %}
+{% set tag_columns = 4 %}
+
 
 {% macro insert_image(url, thumbnail, path, description) %}
   <a href="{{ url }}">
@@ -11,20 +13,56 @@
   </a>
 {% endmacro %}
 
+
 {% macro insert_video(video, width) %}
   <iframe src="{{ video }}" frameborder="0" allowfullscreen SameSite="Strict"></iframe>
 {% endmacro %}
 
+
 {% macro insert_element(file) %}
+  <div class="element">
     {% if file.type == 'image' %}
       {{ insert_image(file.url, file.thumbnail, file.path, file.description) }}
     {% elif file.type == 'video' %}
-       {{ insert_video(file.url, 500) }}
+        {{ insert_video(file.url, 500) }}
     {% endif %}
     {% if file.description is defined %}
       {{ file.description }}
     {% endif %}
+  </div>
 {% endmacro %}
+
+
+{% macro insert_checkbox(tags) %}
+  <table>
+  {% for row in tags|batch(tag_columns) %}
+    <tr>
+    {% for tag in row %}
+      <td>
+        {% if tag in tag_names %}
+          <label><input type="checkbox" value=".{{ tag }}"/>{{ tag_names[tag] }}</label>
+        {% else %}
+          <label><input type="checkbox" value=".{{ tag }}"/>{{ tag }}</label>
+        {% endif %}
+      </td>
+    {% endfor %}
+    </tr>
+  {% endfor %}
+  </table>
+{% endmacro %}
+
+
+{% macro insert_radio(tags, name) %}
+  <label><input type="radio" name="{{ name }}" value=""/>All</label>
+  {% for tag in tags %}
+    {% if tag in tag_names %}
+      <label><input type="radio" name="{{ name }}" value=".{{ tag }}"/>{{ tag_names[tag] }}</label>
+    {% else %}
+      <label><input type="radio" name="{{ name }}" value=".{{ tag }}"/>{{ tag }}</label>
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
 
 
 
@@ -41,11 +79,24 @@
   <script src="https://unpkg.com/isotope-layout@3/dist/isotope.pkgd.min.js"></script>
 
   <style>
-    footer {
-      background-color: #55555f;
+    body {
+      background-color: #333333;
+      color: #ededed;
+    }
+
+    main {
+      font-size: 20px;
+    }
+
+    header, footer {
+      background-color: #555555;
       color: #ededed;
       font-size: 20px;
       text-align: center;
+    }
+
+    a {
+      color: #ededed;
     }
 
     iframe, img {
@@ -57,38 +108,30 @@
       width: 250px;
     }
 
-    element {
-      background-color: #dd2222;
+    .element {
+      background-color: #888888;
+      border: 1px solid #e5e5e5;
+      border-radius: 5px;
     }
   </style>
 </head>
 
 <body>
+<header>
 <div class="title">
   <h1>OpenSpace Media</h1>
   <p>This page is currently an experiment and none of the images are released under any licenses <b>yet</b></p>
   {# <p>A collection of media samples created from OpenSpace that are free to used under the CC-BY license.</p> #}
 </div>
+</header>
 
 <main>
-{#   <div class="button-group filters-button-group">
-    <button class="button is-checked" data-filter="*">show all</button>
-    {% for tag in tags %}
-      <button class="button" data-filter=".{{ tag }}">{{ tag }}</button>
-    {% endfor %}
-    <button class="button" data-filter=".no-tag-provided">no tags</button>
-  </div>
- #}
-
   <div id="form-ui">
-    <p>
-    {% for tag in all_tags %}
-      {% if tag in tag_names %}
-        <label><input type="checkbox" value=".{{ tag }}"/>{{ tag_names[tag] }}</label>
-      {% else %}
-        <label><input type="checkbox" value=".{{ tag }}"/>{{ tag }}</label>
-      {% endif %}
-    {% endfor %}
+    <p id="toplevelgroups">
+      {{ insert_radio(top_level_tags, "toplevel") }}
+    </p>
+    <p id="subgroups">
+      {{ insert_checkbox(all_tags) }}
     </p>
   </div>
 
@@ -96,12 +139,14 @@
     <div class="grid-sizer"></div>
     {% for item in items %}
       {% if item.tags is defined %}
-        <div class="grid-item {{ item.tags|join(' ') }} element">
+        <div class="grid-item {{ item.tags|join(' ') }}">
+          {{ insert_element(item) }}
+        </div>
       {% else %}
-        <div class="grid-item no-tag-provided element">
+        <div class="grid-item no-tag-provided">
+          {{ insert_element(item) }}
+        </div>
       {% endif %}
-      {{ insert_element(item) }}
-      </div>
     {% endfor %}
   </div>
 </main>
@@ -110,23 +155,21 @@
 
 
 <footer>
-  <div>OpenSpace Teams</div>
+  <div>OpenSpace Team</div>
   <div><a href="https://openspaceproject.com">GitHub: OpenSpace Project</a></div>
 </footer>
 
 
 <script type="text/javascript">
   $(function() {
-    $('.grid').imagesLoaded( function() {
-      $('.grid').isotope({
-        itemSelector: '.grid-item',
-        percentPosition: true,
-        stagger: 1,
-        transitionDuration: 500,
-        masonry: {
-          columnWidth: '.grid-sizer'
-        }
-      })
+    $('.grid').isotope({
+      itemSelector: '.grid-item',
+      percentPosition: true,
+      stagger: 1,
+      transitionDuration: 500,
+      masonry: {
+        columnWidth: '.grid-sizer'
+      }
     });
 
     let $checkboxes = $('#form-ui input');

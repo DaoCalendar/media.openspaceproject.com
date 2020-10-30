@@ -172,11 +172,14 @@ def collect_tags(files):
     all_tags = all_tags + file.tags
     top_level_tags.append(file.tags[0])
 
+  top_level_tags = list(set(top_level_tags))
+  top_level_tags.sort()
+
   all_tags = list(set(all_tags))
   all_tags.sort()
 
-  top_level_tags = list(set(top_level_tags))
-  top_level_tags.sort()
+  # Remove all elements from the top level list from the all_tags
+  all_tags = [x for x in all_tags if x not in top_level_tags]
 
   return all_tags, top_level_tags
 
