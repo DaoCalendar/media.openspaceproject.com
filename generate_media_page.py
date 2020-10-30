@@ -163,14 +163,22 @@ def add_descriptions(repo, files, all_files):
       file.description = desc
 
 # files: An array of classified files
-# returns A sorted flat list of all unique tags
+# returns First: A sorted flat list of all unique tags
+#         Second: A flat list of all top-level tags that correspond to top-level directories
 def collect_tags(files):
-  tags = []
+  all_tags = []
+  top_level_tags = []
   for file in files:
-    tags = tags + file.tags
-  tags = list(set(tags))
-  tags.sort()
-  return tags
+    all_tags = all_tags + file.tags
+    top_level_tags.append(file.tags[0])
+
+  all_tags = list(set(all_tags))
+  all_tags.sort()
+
+  top_level_tags = list(set(top_level_tags))
+  top_level_tags.sort()
+
+  return all_tags, top_level_tags
 
 
 ############
@@ -224,7 +232,7 @@ add_descriptions(args.repo, classified_files, raw_files)
 # print('cd', classified_files)
 
 print('Collect tags')
-all_tags = collect_tags(classified_files)
+all_tags, top_level_tags = collect_tags(classified_files)
 # print('at', all_tags)
 
 
@@ -232,7 +240,7 @@ print('Creating page')
 env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'), autoescape=jinja2.select_autoescape([ 'html', 'xml' ]), trim_blocks=True, lstrip_blocks=True)
 # template = env.get_template('index.html.jinja')
 template = env.get_template('index.html.jinja')
-res = template.render(items=classified_files, all_tags=all_tags, tag_names=config.tags)
+res = template.render(items=classified_files, all_tags=all_tags, top_level_tags=top_level_tags, tag_names=config.tags)
 
 print('Writing page')
 with open(args.dest + '/index.html', 'w') as f:
