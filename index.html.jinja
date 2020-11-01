@@ -1,6 +1,5 @@
 {% set thumbnail_width = 256 %}
 {% set thumbnail_height = 256 %}
-{% set tag_columns = 4 %}
 
 
 {% macro insert_image(url, thumbnail, path, description) %}
@@ -26,29 +25,25 @@
     {% elif file.type == 'video' %}
         {{ insert_video(file.url, 500) }}
     {% endif %}
-    {% if file.description is defined %}
-      {{ file.description }}
-    {% endif %}
+    <div class="description">
+      {% if file.description is defined %}
+        {{ file.description }}
+      {% endif %}
+    </div>
   </div>
 {% endmacro %}
 
 
 {% macro insert_checkbox(tags) %}
-  <table>
-  {% for row in tags|batch(tag_columns) %}
-    <tr>
-    {% for tag in row %}
-      <td>
-        {% if tag in tag_names %}
-          <label><input type="checkbox" value=".{{ tag }}"/>{{ tag_names[tag] }}</label>
-        {% else %}
-          <label><input type="checkbox" value=".{{ tag }}"/>{{ tag }}</label>
-        {% endif %}
-      </td>
-    {% endfor %}
-    </tr>
+  {% for tag in tags %}
+  <div class="tags-item">
+    {% if tag in tag_names %}
+      <label><input type="checkbox" value=".{{ tag }}"/>{{ tag_names[tag] }}</label>
+    {% else %}
+      <label><input type="checkbox" value=".{{ tag }}"/>{{ tag }}</label>
+    {% endif %}
+  </div>
   {% endfor %}
-  </table>
 {% endmacro %}
 
 
@@ -104,14 +99,26 @@
       height: auto;
     }
 
-    .grid-sizer, .grid-item {
+    div.grid-sizer, div.grid-item {
       width: 250px;
     }
 
-    .element {
+    img {
+      max-width: 256px;
+      max-height: 256px;
+    }
+
+    div.element {
       background-color: #888888;
       border: 1px solid #e5e5e5;
       border-radius: 5px;
+
+
+    }
+
+    div.description {
+      font-size: 16px;
+      min-height: 16px;
     }
   </style>
 </head>
@@ -122,6 +129,7 @@
   <h1>OpenSpace Media</h1>
   <p>This page is currently an experiment and none of the images are released under any licenses <b>yet</b></p>
   {# <p>A collection of media samples created from OpenSpace that are free to used under the CC-BY license.</p> #}
+  <p>This page shows only thumbnails that link to the original, high-resolution version of the image that you can get to by clicking on the image.</p>
 </div>
 </header>
 
@@ -130,9 +138,9 @@
     <p id="toplevelgroups">
       {{ insert_radio(top_level_tags, "toplevel") }}
     </p>
-    <p id="subgroups">
+    <div class="tags">
       {{ insert_checkbox(all_tags) }}
-    </p>
+    </div>
   </div>
 
   <div class="grid">
@@ -170,6 +178,11 @@
       masonry: {
         columnWidth: '.grid-sizer'
       }
+    });
+
+    $('.tags').isotope({
+      itemSelector: '.tags-item',
+      percentPosition: true
     });
 
     let $checkboxes = $('#form-ui input');

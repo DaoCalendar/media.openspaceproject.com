@@ -1,7 +1,7 @@
 from PIL import Image
 import glob, os
 
-size = 128, 128
+size = 256, 256
 
 extensions = [
   "**/*.jpg",
